@@ -1,30 +1,36 @@
-const https = require('https');
-
-exports.handler = async function(event, context) {
-  const url = 'https://housestockwatcher.com/api';
-
-  return new Promise((resolve) => {
-    https.get(url, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          resolve({
-            statusCode: 200,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-              'Cache-Control': 'public, max-age=3600'
-            },
-            body: JSON.stringify(parsed)
-          });
-        } catch(e) {
-          resolve({ statusCode: 500, body: JSON.stringify({ error: 'Parse fout: ' + e.message }) });
+export async function onRequest(context) {
+  try {
+    const response = await fetch(
+      'https://housestockwatcher.com/api',
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          'Accept': 'application/json'
         }
+      }
+    );
+
+    if (!response.ok) {
+      return new Response(JSON.stringify({ error: `HTTP ${response.status}` }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
       });
-    }).on('error', (err) => {
-      resolve({ statusCode: 500, body: JSON.stringify({ error: 'Fetch fout: ' + err.message }) });
+    }
+
+    const data = await response.json();
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=3600'
+      }
     });
-  });
-};
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
