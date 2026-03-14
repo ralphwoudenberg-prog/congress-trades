@@ -241,27 +241,35 @@ let sortBy = 'date';
 async function fetchJson(url) {
   const errors = [];
 
-  // 1. Direct
+  // 1. Via Cloudflare/Netlify proxy function
+  const isHosted = !['file:',''].includes(location.protocol);
+  if (isHosted) {
+    const fn = url.includes('house') ? '/functions/house' : '/functions/senate';
+    try {
+      const r = await fetch(fn);
+      if (r.ok) {
+        const data = await r.json();
+        if (data && !data.error) return data;
+        errors.push(`Proxy: ${data.error||'leeg'}`);
+      } else {
+        errors.push(`Proxy: HTTP ${r.status}`);
+      }
+    } catch(e) { errors.push(`Proxy: ${e.message}`); }
+  }
+
+  // 2. Direct
   try {
     const r = await fetch(url);
     if (r.ok) return await r.json();
     errors.push(`Direct: HTTP ${r.status}`);
   } catch(e) { errors.push(`Direct: ${e.message}`); }
 
-  // 2. corsproxy.io
+  // 3. corsproxy.io
   try {
-    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-    const r = await fetch(proxyUrl);
+    const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
     if (r.ok) return await r.json();
-    errors.push(`corsproxy.io: HTTP ${r.status}`);
-  } catch(e) { errors.push(`corsproxy.io: ${e.message}`); }
-
-  // 3. allorigins
-  try {
-    const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url));
-    if (r.ok) return await r.json();
-    errors.push(`allorigins: HTTP ${r.status}`);
-  } catch(e) { errors.push(`allorigins: ${e.message}`); }
+    errors.push(`corsproxy: HTTP ${r.status}`);
+  } catch(e) { errors.push(`corsproxy: ${e.message}`); }
 
   throw new Error(errors.join(' | '));
 }
