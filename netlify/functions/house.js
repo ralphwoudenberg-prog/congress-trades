@@ -1,7 +1,7 @@
 const https = require('https');
 
 exports.handler = async function(event, context) {
-  const url = 'https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json';
+  const url = 'https://housestockwatcher.com/api';
 
   return new Promise((resolve) => {
     https.get(url, (res) => {
