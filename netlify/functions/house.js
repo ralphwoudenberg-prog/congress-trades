@@ -1,23 +1,30 @@
-exports.handler = async function(event, context) {
-  try {
-    const response = await fetch(
-      "https://house-stock-watcher-data.s3-us-east-2.amazonaws.com/data/all_transactions.json"
-    );
-    const data = await response.json();
+const https = require('https');
 
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=3600" // cache 1 uur
-      },
-      body: JSON.stringify(data)
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Kon House data niet ophalen: " + err.message })
-    };
-  }
+exports.handler = async function(event, context) {
+  const url = 'https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json';
+
+  return new Promise((resolve) => {
+    https.get(url, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve({
+            statusCode: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'Cache-Control': 'public, max-age=3600'
+            },
+            body: JSON.stringify(parsed)
+          });
+        } catch(e) {
+          resolve({ statusCode: 500, body: JSON.stringify({ error: 'Parse fout: ' + e.message }) });
+        }
+      });
+    }).on('error', (err) => {
+      resolve({ statusCode: 500, body: JSON.stringify({ error: 'Fetch fout: ' + err.message }) });
+    });
+  });
 };
